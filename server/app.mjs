@@ -50,7 +50,7 @@ app.post("/assignments", async (req, res) => {
     await pool.query(
 
       //บอกว่าจะ insert into เข้า table assignments ตาม column ใน ()
-      //ในบรรทัดที่ 58 ใช้ placeholder ป้องกัน SQL injection 
+      //ในบรรทัดที่ 57 ใช้ placeholder ป้องกัน SQL injection 
       //placeholder = เป็นช่องว่างที่รอค่าจริงค่าจะถูกส่งมาผ่าน array อ้างอิงด้านล่าง
       `INSERT INTO assignments
       ( user_id,title, content, category, length, status, created_at, updated_at)
