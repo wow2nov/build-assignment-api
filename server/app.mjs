@@ -1,5 +1,7 @@
 import express from "express";
-import pool from "./utils/db.mjs"
+import pool from "./utils/db.mjs";
+
+app.use(express.json());
 
 const app = express();
 const port = 4001;
