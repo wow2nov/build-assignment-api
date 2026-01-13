@@ -22,9 +22,9 @@ app.post("/assignments", async (req, res) => {
 
     await pool.query(
       `INSERT INTO assignments
-      ( title, content, category, length, status, created_at, updated_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [title, content, category, length, status, created_at, updated_at]
+      ( user_id,title, content, category, length, status, created_at, updated_at)
+      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [ 1, title, content, category, length, status, created_at, updated_at]
     );
 
     return res.status(201).json({
