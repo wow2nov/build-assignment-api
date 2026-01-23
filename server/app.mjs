@@ -1,98 +1,100 @@
-//ดึง express มาใช้ เครื่องช่วยสร้าง web api
-//ใน node.js ช่วยให้เราเขียน api อย่างง่ายเช่น get/post/put/delete
 import express from "express";
+import  pool  from "./utils/db.mjs";
 
-//ดึง pool ออกมาจากไฟล์ db.mjs ไว้เชื่อมต่อกับ postgreSQL 
-//ไว้คุยกับ database เช่น pool.query()
-import pool from "./utils/db.mjs";
-
-//ประกาศค่าตัวแปร app = ฟังก์ชัน express(); คือตัวแทนของ server
 const app = express();
-
-//ประกาศค่า port = 4001 เป็นการกำหนดว่า server จะรันที่ port 4001
 const port = 4001;
 
-//ทำให้ express ให้แปลงข้อมูล JSON ที่ client ส่งมา
-//ทุก API จะอ่าน JSON ได้หมด
 app.use(express.json());
 
+app.get("/test", (req, res) => {
+  return res.json("Server API is working 🚀");
+});
 
-//สร้าง api .http method = post ("endpoint = assignment") , async = รอ 
-app.post("/assignments", async (req, res) => {
-// 1) Access ข้อมูลใน Body จาก Request ด้วย req.body
-  //ใช้ ดัก error ถ้ามีอะไรที่พังจะกระโดดไป catch
+app.get("/assignments", async (req, res) => {
   try {
+    const results = await pool.query("SELECT * FROM assignments");
+    return res.status(200).json({
+      data: results.rows,
+    })
+  }catch (error) {
+    return res.status(500).json({
+      message: `Server could not read assignment because database connection`,
+    })
+  }
+});
 
-    //ดึงค่าที่ client ส่งเข้ามาทาง req.body //req.body คือ ข้อมูลที่ client ส่งมา (จาก Postman) 
-    //client ส่งมาเกินได้ server เท่าที่ดึงมาที่เหลือไม่สนใจ  *เท่าที่ดึงมาคือ สิ่งที่เรา const ไว้ใน {} 
-    const { user_id, title, content, category, length, status } = req.body;
+app.get("/assignments/:assignmentId", async (req, res) => {
+    try {
+      const assignmentIdFromClient = req.params.assignmentId;
+      const results = await pool.query("SELECT * FROM assignments WHERE assignment_id = $1",
+        [assignmentIdFromClient]
+      );
 
-    
-    //ถ้าขาดข้อมูลอย่างใดอย่างหนึ่งที่จำเป็นไป 
-    if (!user_id || !title || !content || !category || length === undefined || !status) {
-
-      //จะรีเทิร์น สถานะ 400 ซึ่งทำการสร้างไม่สำเร็จเนื่องจากใส่ข้อมูลจำเป็นไม่ครบ
-      //และ .json จะอ่านค่่า ({message ไปที่หน้าจอของ client})
-      return res.status(400).json({
-       // 
-        message:
-          "Server could not create assignment because there are missing data from client",
+    if (!results.rows[0]){
+      return res.status(404).json({
+        message: `Server could not find a requested assignment (assignment id: ${assignmentIdFromClient})`,
       });
-    }
-
-
-   //สร้างเวลาปัจจุบัน ใช้เก็บใน database โดย function new Date();
-    const created_at = new Date();
-    const updated_at = new Date();
-
-// 2) เขียน Query เพื่อ Insert ข้อมูลโพสต์ ด้วย Connection Pool
-  //ส่งคำสั่ง SQL ไปที่ postgreSQL และรอจนกว่าจะ insert เสร็จ
-    await pool.query(
-
-      //บอกว่าจะ insert into เข้า table assignments ตาม column ใน ()
-      //ในบรรทัดที่ 57 ใช้ placeholder ป้องกัน SQL injection 
-      //placeholder = เป็นช่องว่างที่รอค่าจริงค่าจะถูกส่งมาผ่าน array อ้างอิงด้านล่าง
-      `INSERT INTO assignments
-      ( user_id,title, content, category, length, status, created_at, updated_at)
-      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
-      [ user_id, title, content, category, length, status, created_at, updated_at]
-    );
-
-    // 3) Return ตัว Response กลับไปหา Client ว่าสร้างสำเร็จ
-    //จะรีเทิร์น สถานะ 201 ซึ่งทำการสร้างสำเร็จเนื่องจากใส่ข้อมูลครบ
-    //และ .json จะอ่านค่่า ({message ไปที่หน้าจอของ client})
-    return res.status(201).json({
-      message: "Created assignment successfully",
+    };
+    return res.status(200).json({
+      data: results.rows[0],
     });
 
-  //ถ้าเกิด error ใน try จะเข้ามาที่ catch
-  } catch (error) {
-  //ถ้า  error เกิดจาก SQL === "23502" = ห้ามว่าง หรือไม่ได้ส่งค่าเข้ามา 
-    if (error.code === "23502") {
-    //จะรีเทิร์น สถานะ 400 ซึ่งทำการสร้างไม่สำเร็จเนื่องจากใส่ข้อมูลจำเป็นไม่ครบ
-    //และ .json จะอ่านค่่า ({message ไปที่หน้าจอของ client})
+     }catch (error){
+      return res.status(500).json({
+        message: `Server could not read assignment because database connection`,
+      });
+    };
+});
+
+app.put("/assignments/:assignmentId", async (req, res) => {
+  try {
+    const assignmentIdFromClient = Number(req.params.assignmentId);
+
+    const {
+      title,
+      content,
+      category,
+    } = req.body;
+
+    if (!title || !content || !category) {
       return res.status(400).json({
-        message:
-          "Server could not create assignment because there are missing data from client",
+        message: "Missing required fields",
       });
     }
-//ในกรณีผิดพลาดอื่นๆ //จะรีเทิร์น สถานะ 500  ซึ่งทำการสร้างไม่สำเร็จเนื่องจากเป็นระบบ
-    //และ .json จะอ่านค่่า ({message ไปที่หน้าจอของ client})
+
+    const updated_at = new Date();
+
+    const results = await pool.query(
+      `
+      UPDATE assignments
+      SET title = $1,
+          content = $2,
+          category = $3,
+          updated_at = $4
+      WHERE assignment_id = $5
+      `,
+      [title, content, category, updated_at, assignmentIdFromClient]
+    );
+
+    if (results.rowCount === 0) {
+      return res.status(404).json({
+        message: `Assignment not found (id: ${assignmentIdFromClient})`,
+      });
+    }
+
+    return res.status(200).json({
+      message: "Updated assignment successfully",
+      data: results.rows[0],
+    });
+
+  } catch (error) {
+    console.error(error);
     return res.status(500).json({
-      message: "Server could not create assignment because database connection",
+      message: "Server could not update assignment because database connection",
     });
   }
 });
 
-//ไว้ดูว่าระบบรันอยู่มั้ย 
-app.get("/test", (req, res) => {
-  //ถ้ารันจะรีเทิร์นค่า "Server API is working 🚀"
-  return res.json("Server API is working 🚀");
-});
-
-
-//สั่งให้หำserver เรื่ิม สื่อสาร ที่ port 4000
 app.listen(port, () => {
-  //ถ้าเห็นข้อความนี้ แปลว่ารัน server อยู่
   console.log(`Server is running at ${port}`);
 });
