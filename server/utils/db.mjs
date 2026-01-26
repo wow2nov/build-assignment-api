@@ -1,5 +1,5 @@
 // Create PostgreSQL Connection Pool here !
-import * as pg from "pg";
+import pg from "pg";
 const { Pool } = pg;
 
 const connectionPool = new Pool({
@@ -8,4 +8,5 @@ const connectionPool = new Pool({
 });
 
 export default connectionPool;
+
 

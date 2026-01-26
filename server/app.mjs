@@ -95,6 +95,31 @@ app.put("/assignments/:assignmentId", async (req, res) => {
   }
 });
 
+app.delete("/assignments/:assignmentId" , async (req, res) => {
+  try{
+    const assignmentIdFromClient = req.params.assignmentId;
+
+    const result =  await pool.query (
+      `DELETE from assignments WHERE assignment_id = $1`,
+      [assignmentIdFromClient]
+    
+    );
+    if (result.rowCount === 0){
+      return res.status(404).json ({
+        message: "Assignment not found",
+      });
+    }
+    return res.status(200).json({
+      message : "Deleted assignment successfully",
+    });
+
+  }catch (error) {
+    return res.status(500).json({
+      "message": "Server could not delete assignment because database connection",
+     });
+    }
+  });
+
 app.listen(port, () => {
   console.log(`Server is running at ${port}`);
 });
